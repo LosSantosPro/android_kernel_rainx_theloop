@@ -11,6 +11,26 @@ if [ ! -f bin/repo ]; then
   chmod a+x bin/repo
 fi
 
+# Initialize the kernel-6.6 git submodule (UN1CA samsung_mediatek_common).
+# Skipped silently if already initialized.
+if [ -f kernel-6.6/Makefile ]; then
+  echo "=== kernel-6.6 submodule already populated ==="
+else
+  echo "=== Initializing kernel-6.6 submodule ==="
+  git submodule update --init --recursive kernel-6.6
+fi
+
+# Replace the kernel/kernel-6.6 symlink (-> ../kernel-6.6) with a hardlink
+# tree of the same content. The committed symlink escapes bazel's linux
+# sandbox bind mount, which only maps kernel/ and fails to resolve paths
+# to the parent kernel-6.6/. Hardlinks keep identical inodes so no extra
+# disk is used, and each path is inside the bound kernel/ directory.
+if [ -L kernel/kernel-6.6 ]; then
+  echo "=== Replacing kernel/kernel-6.6 symlink with hardlink tree ==="
+  rm kernel/kernel-6.6
+  cp -al kernel-6.6 kernel/kernel-6.6
+fi
+
 mkdir -p aosp-kernel
 cd aosp-kernel
 if [ ! -d .repo ]; then
